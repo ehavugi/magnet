@@ -8,6 +8,8 @@ from magnet.io import load_dataframe, load_hull
 import numpy as np
 from magnet.core import BH_Transformer, loss_BH, bdata_generation, point_in_hull
 from magnet import config as c
+import magnethub as mh
+from scipy.signal import resample
 
 STREAMLIT_ROOT = os.path.dirname(__file__)
 
@@ -20,10 +22,17 @@ def ui_intro(m):
     st.subheader('"It is time to upgrade the Steinmetz Equation!" - Try MagNet AI and join us to make it better')
     st.caption('We created MagNet AI to advance power magnetics research, education, and design. The mission of MagNet AI is to replace the traditional curve-fitting models (e.g., Steinmetz Equations and Jiles-Atherton Models) with state-of-the-art data-driven methods such as neural networks and machine learning. MagNet AI is open, transparent, fast, smart, versatile, and is continously learning. It is a new tool to design power magnetics and can do lots of things that traditional methods cannnot do.')
     st.markdown("""---""")
-    
+    model_list=['magnet',"asu","paderborn","sydney"]
     col1, col2 = st.columns(2)
     with col1:
         st.header('MagNet AI Input')
+        model = st.selectbox(
+            f'model:',
+            model_list,
+            index=1,
+            key=f'model {m}',
+            help='select from a list of available models')
+
         material = st.selectbox(
             f'Material:',
             material_list,
@@ -235,8 +244,15 @@ def ui_intro(m):
             if flag_dbdt_high == 1:
                 st.warning(f"For dB/dt above {round(dbdt_max * 1e-3)} mT/ns, results are potentially extrapolated.")
     
+    if model in ['paderborn',"sydney","asu"]:
+        mdl = mh.loss.LossModel(material=material, team=model)
+        loss, hdata = mdl(resample(bdata,1024), freq, temp)
+    else:
+        hdata = BH_Transformer(material, freq, temp, bias, bdata)
+        loss = loss_BH(bdata, hdata, freq)
+    # Since every model does not have Hdata for now we over-ride with magnet's
     hdata = BH_Transformer(material, freq, temp, bias, bdata)
-    loss = loss_BH(bdata, hdata, freq)
+    # loss = loss_BH(bdata, hdata, freq)
     
     Eq = load_hull(material)
     if inputB is None:
@@ -348,14 +364,20 @@ def ui_intro(m):
     
         loss_test_list = pd.DataFrame(columns=['Material','Core Loss [kW/m^3]','This one'])
         for material_test in material_list:
-            hdata_test = BH_Transformer(material_test, freq, temp, bias, bdata)
-            loss_test = loss_BH(bdata, hdata_test, freq)
+            if model in ['paderborn',"sydney","asu"]:
+                mdl = mh.loss.LossModel(material=material_test, team=model)
+                loss_test, hdata_test = mdl(resample(bdata,1024), freq, temp)
+                loss_test=np.round(loss_test,2)
+                print(loss_test.shape)
+            else:
+                hdata_test = BH_Transformer(material_test, freq, temp, bias, bdata)
+                loss_test = loss_BH(bdata, hdata_test, freq)
             this_one = '   ✓' if (material_test==material) else ''
-            loss_test_list = loss_test_list.append({
-                'Material':material_test,
-                'Core Loss [kW/m^3]': np.round(loss_test / 1e3, 2),
-                'This one': this_one}, ignore_index=True)
-        
+            coreLossMaterial_i=pd.DataFrame.from_dict({
+                'Material':[material_test],
+                'Core Loss [kW/m^3]': [np.round(loss_test / 1e3, 2)],
+                'This one': [this_one]})
+            loss_test_list = pd.concat([loss_test_list,coreLossMaterial_i])         
         loss_test_list=loss_test_list.sort_values(by='Core Loss [kW/m^3]')
         
         # loss_test_list.index = [''] * len(loss_test_list) # hide index
