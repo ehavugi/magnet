@@ -22,7 +22,9 @@ def ui_intro(m):
     st.subheader('"It is time to upgrade the Steinmetz Equation!" - Try MagNet AI and join us to make it better')
     st.caption('We created MagNet AI to advance power magnetics research, education, and design. The mission of MagNet AI is to replace the traditional curve-fitting models (e.g., Steinmetz Equations and Jiles-Atherton Models) with state-of-the-art data-driven methods such as neural networks and machine learning. MagNet AI is open, transparent, fast, smart, versatile, and is continously learning. It is a new tool to design power magnetics and can do lots of things that traditional methods cannnot do.')
     st.markdown("""---""")
-    model_list=['magnet',"asu","paderborn","sydney"]
+    mag_net_hub_models=list(mh.loss.TEAMS.keys())
+
+    model_list=['magnet']+mag_net_hub_models
     col1, col2 = st.columns(2)
     with col1:
         st.header('MagNet AI Input')
@@ -244,7 +246,7 @@ def ui_intro(m):
             if flag_dbdt_high == 1:
                 st.warning(f"For dB/dt above {round(dbdt_max * 1e-3)} mT/ns, results are potentially extrapolated.")
     
-    if model in ['paderborn',"sydney","asu"]:
+    if model in mag_net_hub_models:
         mdl = mh.loss.LossModel(material=material, team=model)
         loss, hdata = mdl(resample(bdata,1024), freq, temp)
     else:
@@ -364,11 +366,10 @@ def ui_intro(m):
     
         loss_test_list = pd.DataFrame(columns=['Material','Core Loss [kW/m^3]','This one'])
         for material_test in material_list:
-            if model in ['paderborn',"sydney","asu"]:
+            if model in mag_net_hub_models:
                 mdl = mh.loss.LossModel(material=material_test, team=model)
                 loss_test, hdata_test = mdl(resample(bdata,1024), freq, temp)
                 loss_test=np.round(loss_test,2)
-                print(loss_test.shape)
             else:
                 hdata_test = BH_Transformer(material_test, freq, temp, bias, bdata)
                 loss_test = loss_BH(bdata, hdata_test, freq)
