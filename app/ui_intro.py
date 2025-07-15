@@ -9,7 +9,6 @@ import numpy as np
 from magnet.core import BH_Transformer, loss_BH, bdata_generation, point_in_hull
 from magnet import config as c
 import magnethub as mh
-from scipy.signal import resample
 
 STREAMLIT_ROOT = os.path.dirname(__file__)
 
@@ -248,7 +247,7 @@ def ui_intro(m):
     
     if model in mag_net_hub_models:
         mdl = mh.loss.LossModel(material=material, team=model)
-        loss, hdata = mdl(resample(bdata,1024), freq, temp)
+        loss, hdata = mdl(bdata, freq, temp)
     else:
         hdata = BH_Transformer(material, freq, temp, bias, bdata)
         loss = loss_BH(bdata, hdata, freq)
@@ -368,7 +367,7 @@ def ui_intro(m):
         for material_test in material_list:
             if model in mag_net_hub_models:
                 mdl = mh.loss.LossModel(material=material_test, team=model)
-                loss_test, hdata_test = mdl(resample(bdata,1024), freq, temp)
+                loss_test, hdata_test = mdl(bdata, freq, temp)
                 loss_test=np.round(loss_test,2)
             else:
                 hdata_test = BH_Transformer(material_test, freq, temp, bias, bdata)
